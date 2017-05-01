@@ -1,8 +1,9 @@
 #include <algorithm>
 #include <cassert>
+#include <iostream>
 
 void referenceCalculation(const float* const h_logLuminance, unsigned int* const h_cdf,
-                          const size_t numRows, const size_t numCols, const size_t numBins, 
+                          const size_t numRows, const size_t numCols, const size_t numBins,
 						  float &logLumMin, float &logLumMax)
 {
   logLumMin = h_logLuminance[0];
@@ -17,6 +18,7 @@ void referenceCalculation(const float* const h_logLuminance, unsigned int* const
 
   //Step 2
   float logLumRange = logLumMax - logLumMin;
+  std::cout << "min " << logLumMin << " max " << logLumMax << std::endl;
 
   //Step 3
   //next we use the now known range to compute
@@ -30,6 +32,10 @@ void referenceCalculation(const float* const h_logLuminance, unsigned int* const
                            static_cast<unsigned int>((h_logLuminance[i] - logLumMin) / logLumRange * numBins));
     histo[bin]++;
   }
+  for (int i = 0; i < numBins; ++i) {
+    std::cout << " " << histo[i];
+  }
+  std::cout << std::endl;
 
   //Step 4
   //finally we perform and exclusive scan (prefix sum)
@@ -38,6 +44,11 @@ void referenceCalculation(const float* const h_logLuminance, unsigned int* const
   for (size_t i = 1; i < numBins; ++i) {
     h_cdf[i] = h_cdf[i - 1] + histo[i - 1];
   }
+  std::cout << "h_cdf\n";
+  for (int i = 0; i < numBins; ++i) {
+    std::cout << " " << h_cdf[i];
+  }
+  std::cout << std::endl;
 
   delete[] histo;
 }

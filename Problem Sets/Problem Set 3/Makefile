@@ -26,9 +26,9 @@ CUDA_INCLUDEPATH=/usr/local/cuda-5.0/include
 #CUDA_INCLUDEPATH=/usr/local/cuda/include
 #CUDA_LIBPATH=/usr/local/cuda/lib
 
-NVCC_OPTS=-O3 -arch=sm_20 -Xcompiler -Wall -Xcompiler -Wextra -m64
+NVCC_OPTS=-O0 -g -arch=sm_30 -Xcompiler -Wall -Xcompiler -Wextra -m64
 
-GCC_OPTS=-O3 -Wall -Wextra -m64
+GCC_OPTS=-O0 -g -Wall -Wextra -m64
 
 student: main.o student_func.o HW3.o loadSaveImage.o compare.o reference_calc.o Makefile
 	$(NVCC) -o HW3 main.o student_func.o HW3.o loadSaveImage.o compare.o reference_calc.o -L $(OPENCV_LIBPATH) $(OPENCV_LIBS) $(NVCC_OPTS)
