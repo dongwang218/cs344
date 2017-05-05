@@ -1,6 +1,7 @@
 #include <algorithm>
 // For memset
 #include <cstring>
+#include <iostream>
 
 void reference_calculation(unsigned int* inputVals,
                            unsigned int* inputPos,
@@ -32,6 +33,7 @@ void reference_calculation(unsigned int* inputVals,
       unsigned int bin = (vals_src[j] & mask) >> i;
       binHistogram[bin]++;
     }
+    std::cout << "iteration " << i <<  " bin " << binHistogram[0] << ", " << binHistogram[1] << std::endl;
 
     //perform exclusive prefix sum (scan) on binHistogram to get starting
     //location for each bin
