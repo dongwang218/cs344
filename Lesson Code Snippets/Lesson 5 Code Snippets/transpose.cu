@@ -199,6 +199,8 @@ int main(int argc, char **argv)
  * every kernel 10 or 100 times and average the timings to smooth out any variance. 
  * But this makes for messy code and our goal is teaching, not detailed benchmarking.
  */
+	dim3 blocks(N/K,N/K); // blocks per grid
+	dim3 threads(K,K);	// threads per block
 
 	timer.Start();
 	transpose_serial<<<1,1>>>(d_in, d_out);
@@ -214,15 +216,20 @@ int main(int argc, char **argv)
 	printf("transpose_parallel_per_row: %g ms.\nVerifying transpose...%s\n", 
 		   timer.Elapsed(), compare_matrices(out, gold) ? "Failed" : "Success");
 
-	dim3 blocks(N/K,N/K); // blocks per grid
-	dim3 threads(K,K);	// threads per block
 
 	timer.Start();
 	transpose_parallel_per_element<<<blocks,threads>>>(d_in, d_out);
 	timer.Stop();
 	cudaMemcpy(out, d_out, numbytes, cudaMemcpyDeviceToHost);
-	printf("transpose_parallel_per_element: %g ms.\nVerifying transpose...%s\n",
+	printf("transpose_parallel_per_element<<<n/k x n/k, kxk>>>: %g ms.\nVerifying transpose...%s\n",
 		   timer.Elapsed(), compare_matrices(out, gold) ? "Failed" : "Success");
+
+        timer.Start();
+        transpose_parallel_per_element<<<N*N, 1>>>(d_in, d_out);
+        timer.Stop();
+        cudaMemcpy(out, d_out, numbytes, cudaMemcpyDeviceToHost);
+        printf("transpose_parallel_per_element<<<N x N, 1>>>: %g ms.\nVerifying transpose...%s\n",
+                   timer.Elapsed(), compare_matrices(out, gold) ? "Failed" : "Success");
 
 	timer.Start();
 	transpose_parallel_per_element_tiled<<<blocks,threads>>>(d_in, d_out);

@@ -26,11 +26,17 @@
 
 
 #include "utils.h"
+#include <thrust/device_vector.h>
+#include <thrust/sort.h>
+#include <thrust/binary_search.h>
+#include <thrust/adjacent_difference.h>
+#include <thrust/iterator/constant_iterator.h>
+#include <thrust/iterator/counting_iterator.h>
 
 __global__
 void yourHisto(const unsigned int* const vals, //INPUT
                unsigned int* const histo,      //OUPUT
-               int numVals)
+               int numBins, int numVals)
 {
   //TODO fill in this kernel to calculate the histogram
   //as quickly as possible
@@ -40,6 +46,7 @@ void yourHisto(const unsigned int* const vals, //INPUT
   //write faster code
 }
 
+// https://www.ecse.rpi.edu/~wrf/wiki/ParallelComputingSpring2014/thrust/histogram.cu
 void computeHistogram(const unsigned int* const d_vals, //INPUT
                       unsigned int* const d_histo,      //OUTPUT
                       const unsigned int numBins,
@@ -49,6 +56,14 @@ void computeHistogram(const unsigned int* const d_vals, //INPUT
 
   //if you want to use/launch more than one kernel,
   //feel free
-
+  const thrust::device_ptr<unsigned int> data = thrust::device_pointer_cast(const_cast<unsigned int*>(d_vals));
+  thrust::device_ptr<unsigned int> histogram(d_histo);
+  thrust::sort(data, data+numElems);
+  thrust::counting_iterator<unsigned int> search_begin(0);
+  thrust::upper_bound(data, data+numElems,
+                      search_begin, search_begin + numBins,
+                      histogram);
+  thrust::adjacent_difference(histogram, histogram+numBins,
+                              histogram);
   cudaDeviceSynchronize(); checkCudaErrors(cudaGetLastError());
 }
