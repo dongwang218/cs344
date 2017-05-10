@@ -150,13 +150,10 @@ void gaussian_blur(const unsigned char* const inputChannel,
   float sum = 0.0f;
   for (int j = -filterWidth/2; j <= filterWidth / 2; ++j) {
    for (int i = -filterWidth/2; i <= filterWidth / 2; ++i) {
-     int ny = (thread_2D_pos.y + j);
-     int nx = thread_2D_pos.x + i;
-     unsigned char data = 0;
-     if (nx >= 0 && nx < numCols && ny >= 0 && ny < numRows) {
-       int index = ny * numCols + nx;
-       data = inputChannel[index];
-     }
+     int ny = max(0, min(numRows-1, (thread_2D_pos.y + j)));
+     int nx = max(0, min(numCols-1, thread_2D_pos.x + i));
+     int index = ny * numCols + nx;
+     float data = inputChannel[index];
      sum += data * d_filter[j+filterWidth/2][i+filterWidth/2];
     }
   }
@@ -253,7 +250,6 @@ void allocateMemoryAndCopyToGPU(const size_t numRowsImage, const size_t numColsI
   //be able to tell if anything goes wrong
   //IMPORTANT: Notice that we pass a pointer to a pointer to cudaMalloc
   checkCudaErrors(cudaMalloc(&d_filter,   sizeof(float) * filterWidth * filterWidth));
-
   //TODO:
   //Copy the filter on the host (h_filter) to the memory you just allocated
   //on the GPU.  cudaMemcpy(dst, src, numBytes, cudaMemcpyHostToDevice);
@@ -274,7 +270,7 @@ void your_gaussian_blur(const uchar4 * const h_inputImageRGBA, uchar4 * const d_
   //TODO:
   //Compute correct grid size (i.e., number of blocks per kernel launch)
   //from the image size and and block size.
-  const dim3 gridSize((int)ceil(numCols / (filterWidth)), (int)ceil(numRows / (filterWidth)));
+  const dim3 gridSize(int((numCols + filterWidth-1) / filterWidth), int((numRows+filterWidth-1) / filterWidth));
 
   //TODO: Launch a kernel for separating the RGBA image into different color channels
   separateChannels<<<gridSize, blockSize>>>(d_inputImageRGBA, numRows, numCols, d_red, d_green, d_blue);
@@ -305,7 +301,6 @@ void your_gaussian_blur(const uchar4 * const h_inputImageRGBA, uchar4 * const d_
                                              numRows,
                                              numCols);
   cudaDeviceSynchronize(); checkCudaErrors(cudaGetLastError());
-
 }
 
 
