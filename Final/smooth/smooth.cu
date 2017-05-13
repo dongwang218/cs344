@@ -19,8 +19,21 @@ __global__ void smooth(float * v_new, const float * v) {
 // Your code
 __global__ void smooth_shared(float * v_new, const float * v) {
     extern __shared__ float s[];
-    // TODO: Fill in the rest of this function
-    return v[0];
+    int myIdx = ( blockIdx.x * blockDim.x ) + threadIdx.x;
+
+    s[threadIdx.x] = v[myIdx];
+    int numThreads = blockDim.x * gridDim.x;
+    int myLeftIdx = (myIdx == 0) ? 0 : myIdx - 1;
+    int myRightIdx = (myIdx == (numThreads - 1)) ? numThreads - 1 : myIdx + 1;
+    if (threadIdx.x == 0) {
+      s[blockDim.x+1] = v[myLeftIdx];
+    }
+    if (threadIdx.x == blockDim.x-1) {
+      s[blockDim.x] = v[myRightIdx];
+    }
+    __syncthreads();
+
+    v_new[myIdx] =  0.25f * s[threadIdx.x == 0 ? (blockDim.x + 1) : (threadIdx.x - 1)] + 0.5f * s[threadIdx.x] + 0.25f * s[threadIdx.x+1];
 }
 
 int main(int argc, char **argv)
@@ -54,14 +67,18 @@ int main(int argc, char **argv)
     cudaMalloc((void **) &d_out_shared, ARRAY_BYTES);
 
     // transfer the input array to the GPU
-    cudaMemcpy(d_in, h_in, ARRAY_BYTES, cudaMemcpyHostToDevice); 
+    cudaMemcpy(d_in, h_in, ARRAY_BYTES, cudaMemcpyHostToDevice);
 
     // cudaEvent_t start, stop;
     // cudaEventCreate(&start);
     // cudaEventCreate(&stop);
     // launch the kernel
-    smooth<<<ARRAY_SIZE / BLOCK_SIZE, BLOCK_SIZE>>>(d_out, d_in);
     GpuTimer timer;
+    timer.Start();
+    smooth<<<ARRAY_SIZE / BLOCK_SIZE, BLOCK_SIZE>>>(d_out, d_in);
+    timer.Stop();
+    printf("Their code executed in %g ms\n", timer.Elapsed());
+
     timer.Start();
     smooth_shared<<<ARRAY_SIZE / BLOCK_SIZE, BLOCK_SIZE, (BLOCK_SIZE + 2) * sizeof(float)>>>(d_out_shared, d_in);
     timer.Stop();
@@ -69,7 +86,7 @@ int main(int argc, char **argv)
     printf("Your code executed in %g ms\n", timer.Elapsed());
     // cudaEventSynchronize(stop);
     // float elapsedTime;
-    // cudaEventElapsedTime(&elapsedTime, start, stop);    
+    // cudaEventElapsedTime(&elapsedTime, start, stop);
 
     // copy back the result from GPU
     cudaMemcpy(h_out, d_out, ARRAY_BYTES, cudaMemcpyDeviceToHost);
@@ -82,6 +99,6 @@ int main(int argc, char **argv)
     cudaFree(d_in);
     cudaFree(d_out);
     cudaFree(d_out_shared);
-        
+
     return 0;
 }

@@ -25,9 +25,17 @@ __device__ unsigned int warp_reduce(unsigned int p, volatile unsigned int * s) {
     //
     // TODO: Fill in the rest of this function
     //
+    int t = threadIdx.x;
+    s[t] = __ballot(p);
+    if (t < 32-1) s[t] |= s[t + 1];
+    if (t < 32-2) s[t] |= s[t + 2];
+    if (t < 32-4) s[t] |= s[t + 4];
+    if (t < 32-8) s[t] |= s[t + 8];
+    if (t < 32-16) s[t] |= s[t + 16];
+    return __popc(s[0]);
 }
 
-__global__ void reduce(unsigned int * d_out_warp, 
+__global__ void reduce(unsigned int * d_out_warp,
                        const unsigned int * d_in)
 {
     extern __shared__ unsigned int s[];
@@ -63,7 +71,7 @@ int main(int argc, char **argv)
     cudaMalloc((void **) &d_out_warp, sizeof(unsigned int));
 
     // transfer the input array to the GPU
-    cudaMemcpy(d_in, h_in, ARRAY_BYTES, cudaMemcpyHostToDevice); 
+    cudaMemcpy(d_in, h_in, ARRAY_BYTES, cudaMemcpyHostToDevice);
 
     GpuTimer timer;
     timer.Start();
@@ -72,11 +80,11 @@ int main(int argc, char **argv)
         (d_out_warp, d_in);
     timer.Stop();
 
-    printf("Your code executed in %g ms\n", timer.Elapsed());  
+    printf("Your code executed in %g ms\n", timer.Elapsed());
 
     unsigned int h_out_warp;
     // copy back the sum from GPU
-    cudaMemcpy(&h_out_warp, d_out_warp, sizeof(unsigned int), 
+    cudaMemcpy(&h_out_warp, d_out_warp, sizeof(unsigned int),
                cudaMemcpyDeviceToHost);
 
     // compare your result against the expected reduce sum
@@ -85,6 +93,5 @@ int main(int argc, char **argv)
     // free GPU memory allocation
     cudaFree(d_in);
     cudaFree(d_out_warp);
-        
-}
 
+}

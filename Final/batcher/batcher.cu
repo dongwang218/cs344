@@ -12,13 +12,25 @@ __global__ void batcherBitonicMergesort64(float * d_out, const float * d_in)
     int tid  = threadIdx.x;
     sdata[tid] = d_in[tid];
     __syncthreads();
-    
-    for (int stage = 0; stage <= 5; stage++)
+
+    for (int stage = 0, size = 2; stage <= 5; stage++, size *= 2)
     {
-        for (int substage = stage; substage >= 0; substage--)
-        {
-            // TODO
+      for (int substage = stage, current_size = size; substage >= 0; substage--, current_size /= 2)
+      {
+          // TODO
+
+        int box_id = tid / current_size;
+        int box_start = box_id * current_size;
+        int box_end = (box_id+1) * current_size-1;
+        if (tid-box_start < current_size/2) {
+          int other = substage == stage ? box_end - (tid-box_start) : tid+current_size/2;
+          float xiao = min(sdata[tid], sdata[other]);
+          float da = max(sdata[tid], sdata[other]);
+          sdata[tid] = xiao;
+          sdata[other] = da;
         }
+        __syncthreads();
+      }
     }
 
     d_out[tid] = sdata[tid];
@@ -43,7 +55,7 @@ int main(int argc, char **argv)
     float h_out[ARRAY_SIZE];
     for(int i = 0; i < ARRAY_SIZE; i++) {
         // generate random float in [0, 1]
-        h_in[i] = (float)random()/(float)RAND_MAX;
+      h_in[i] = (float)random()/(float)RAND_MAX;
         h_sorted[i] = h_in[i];
     }
     qsort(h_sorted, ARRAY_SIZE, sizeof(float), compareFloat);
@@ -56,24 +68,24 @@ int main(int argc, char **argv)
     cudaMalloc((void **) &d_out, ARRAY_BYTES);
 
     // transfer the input array to the GPU
-    cudaMemcpy(d_in, h_in, ARRAY_BYTES, cudaMemcpyHostToDevice); 
+    cudaMemcpy(d_in, h_in, ARRAY_BYTES, cudaMemcpyHostToDevice);
 
     // launch the kernel
     GpuTimer timer;
     timer.Start();
     batcherBitonicMergesort64<<<1, ARRAY_SIZE, ARRAY_SIZE * sizeof(float)>>>(d_out, d_in);
     timer.Stop();
-    
+
     printf("Your code executed in %g ms\n", timer.Elapsed());
-    
+
     // copy back the sum from GPU
     cudaMemcpy(h_out, d_out, ARRAY_BYTES, cudaMemcpyDeviceToHost);
 
     compare(h_out, h_sorted, ARRAY_SIZE);
-  
+
     // free GPU memory allocation
     cudaFree(d_in);
     cudaFree(d_out);
-        
+
     return 0;
 }
